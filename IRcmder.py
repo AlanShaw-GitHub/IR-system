@@ -28,7 +28,7 @@ class IRcmder(cmd.Cmd):
         print('Unrecognized command.\nNo such symbol : %s' % line)
 
     def help_build(self):
-        print()
+        print('Path to Reuters.')
 
 
 if __name__ == '__main__':
