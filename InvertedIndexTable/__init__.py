@@ -1,0 +1,1 @@
+from .InvertedIndexTable import process
