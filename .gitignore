@@ -7,7 +7,6 @@ __pycache__/
 *.so
 
 # Distribution / packaging
-.idea
 .Python
 build/
 develop-eggs/
@@ -113,3 +112,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+.idea/
