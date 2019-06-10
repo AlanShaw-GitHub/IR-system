@@ -17,6 +17,11 @@ class IRcmder(cmd.Cmd):
         ret = self.object.indextable.find_regex_words(args)
         print(ret)
 
+    def do_search_by_TFIDF(self, args):
+
+        ret = self.object.indextable.compute_TFIDF(args)
+        print(ret)
+
     def do_quit(self, args):
         print('Goodbye.')
         sys.exit()
