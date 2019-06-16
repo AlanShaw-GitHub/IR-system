@@ -1,10 +1,12 @@
 import os
 from utils import readfiles
+from utils import vector_encode, vector_decode, boolean_op, vb_decode, vb_encode
 import time
 import nltk
 from utils import sbst
 import math
 import operator
+import numpy as np
 
 punctuations = [',', '.', ':', ';', '?', '(', ')', '[', ']', '&', '!', '*', '@', '#',
                 '$', '%', '<', '>', "''", '``', "'", '{', '}']
@@ -16,6 +18,9 @@ class IndexTable:
         self.table = {}
         self.permuterm_index_table = None
         self.length = 0
+        self.compress_doc_id = []
+        self.compress_doc_fre = []
+        self.compress_word = []
 
     def insert_pair(self, word, docID):
         IDlist = self.table.get(word, 'null')
@@ -103,6 +108,153 @@ class IndexTable:
         scores = sorted(scores.items(), key=operator.itemgetter(1), reverse=True)
         return scores
 
+    #布尔检索(表达式长度最大为3)
+    def boolean_query(self, expression, doc_list):
+        ret = []
+        if len(expression) == 1:
+            if expression[0] not in ['AND', 'OR', 'NOT']:
+                IDlist = self.table.get(expression[0], [{},0])[0]
+                ret.extend(sorted(IDlist.keys()))
+            else:
+                print('Invalid boolean expression.')
+        elif len(expression) == 2 and expression[0] == 'NOT':
+            IDlist = self.table.get(expression[1], [{},0])[0]
+            for id in doc_list:
+                if id not in IDlist:
+                    ret.append(id)
+        elif len(expression) == 3:
+            IDlist1 = self.table.get(expression[0], [{},0])[0]
+            IDlist2 = self.table.get(expression[2], [{},0])[0]
+            if expression[1] == 'AND':
+                for id in doc_list:
+                    if (id in IDlist1) and (id in IDlist2):
+                        ret.append(id)
+            elif expression[1] == 'OR':
+                for id in doc_list:
+                    if (id in IDlist1) or (id in IDlist2):
+                        ret.append(id)
+            else:
+                return 'Invalid boolean expression./n'
+        else:
+            return 'Invalid boolean expression.'
+        return ret
+
+    # 索引压缩(VB编码)
+    def index_compression(self):
+        words = list(self.table)
+        docIDs = []
+        docFres = []
+        for word in words:
+            docIDs.append(list(self.table[word][0]))
+        for i in range(len(docIDs)):
+            temp = []
+            docIDs[i].sort()
+            for j in range(len(docIDs[i])):
+                temp.append(self.table[words[i]][0][docIDs[i][j]])
+            docFres.append(temp)
+        for i in range(len(docIDs)):    # 求间距
+            for j in range(1, len(docIDs[i])):
+                    docIDs[i][len(docIDs[i]) - j] = docIDs[i][len(docIDs[i]) - j] + docIDs[i][len(docIDs[i]) - j - 1]
+        for i in range(len(docIDs)):    # 编码
+            self.compress_doc_id.append(vb_encode(docIDs[i]))
+            self.compress_doc_fre.append(vb_encode(docFres[i]))
+        self.compress_word = words
+        self.table={}
+
+    # 索引恢复
+    def index_recovery(self):
+        docIDs = []
+        docFres = []
+        test={}
+        for i in range(len(self.compress_word)): # 解码
+            docIDs.append(vb_decode(self.compress_doc_id[i]))
+            docFres.append(vb_decode(self.compress_doc_fre[i]))
+        for i in range(len(docIDs)):    # 求ID
+            for j in range(1, len(docIDs[i])):
+                    docIDs[i][j] = docIDs[i][j] - docIDs[i][j - 1]
+        for i in range(len(docIDs)):
+            tep_list = []
+            dic = {}
+            for j in range(len(docIDs[i])):
+                dic[docIDs[i][j]] = docFres[i][j]
+            tep_list.append(dic)
+            tep_list.append(len(dic))
+            self.table[self.compress_word[i]] = tep_list
+        self.compress_word = []
+        self.compress_doc_id = []
+        self.compress_doc_fre = []
+
+    #布尔检索(表达式长度最大为3)
+    def boolean_query(self, expression, doc_list):
+        ret = []
+        if len(expression) == 1:
+            if expression[0] not in ['AND', 'OR', 'NOT']:
+                IDlist = self.table.get(expression[0], [{},0])[0]
+                ret.extend(sorted(IDlist.keys()))
+            else:
+                print('Invalid boolean expression.')
+        elif len(expression) == 2 and expression[0] == 'NOT':
+            IDlist = self.table.get(expression[1], [{},0])[0]
+            for id in doc_list:
+                if id not in IDlist:
+                    ret.append(id)
+        elif len(expression) == 3:
+            IDlist1 = self.table.get(expression[0], [{},0])[0]
+            IDlist2 = self.table.get(expression[2], [{},0])[0]
+            if expression[1] == 'AND':
+                for id in doc_list:
+                    if (id in IDlist1) and (id in IDlist2):
+                        ret.append(id)
+            elif expression[1] == 'OR':
+                for id in doc_list:
+                    if (id in IDlist1) or (id in IDlist2):
+                        ret.append(id)
+            else:
+                return 'Invalid boolean expression./n'
+        else:
+            return 'Invalid boolean expression.'
+        return ret
+
+    # 布尔检索(表达式长度最大为3)
+    def boolean_query(self, words, doc_list):
+        priority = {'AND': 1, 'OR': 1, 'NOT': 2, '(': 0}
+        stack = []
+        op = []
+        ret = []
+        for i in range(0, len(words)):
+            if words[i] == 'AND' or words[i] == 'OR' or words[i] == 'NOT':
+                # print op
+                while (len(op) > 0) and priority[op[len(op) - 1]] >= priority[words[i]]:
+                    stack = self.boolean_op(op.pop(), stack)
+                op.append(words[i])
+            elif words[i] == '(':
+                op.append('(')
+            elif words[i] == ')':
+                while len(op) > 0 and op[len(op) - 1] != '(':
+                    stack = boolean_op(op.pop(), stack)
+                op.pop()
+            else:
+                vec = vector_encode(self.table.get(words[i], [{},0])[0], doc_list)
+                stack.append(vec)				
+
+        while len(op) > 0:
+            stack = boolean_op(op.pop(), stack)
+        if len(stack) > 1:
+            return 'Invalid boolean expression.'
+        res = stack[0]
+        ret = vector_decode(res, doc_list)
+        return ret
+
+    def correction(self, word):
+        print('correcting...')
+        candidates = []
+        for key in self.table.keys():
+            if Levenshtein_Distance(word, key) <= 2:
+                candidates.append(key)
+        if len(candidates):
+            print('You may want to search:')
+            print(' '.join(candidates))
+
 class StaticObjects:
 
     def __init__(self):
@@ -136,13 +288,31 @@ def tokenize(documents, engine='nltk'):
         document_words[_doc[0]] = doc_filtered
     return document_words
 
+#Levenshtein距离
+def Levenshtein_Distance(str1,str2):
+    m = len(str1)
+    n = len(str2)
+    M = np.zeros((m+1, n+1))
+    for i in range(m+1):
+        M[i][0] = i
+    for j in range(n+1):
+        M[0][j] = j
+    for i in range(1, m+1):
+        for j in range(1, n+1):
+            if str1[i-1] == str2[j-1]:
+                M[i][j] = min(M[i-1][j]+1, M[i][j-1]+1, M[i-1][j-1])
+            else:
+                M[i][j] = min(M[i-1][j]+1, M[i][j-1]+1, M[i-1][j-1]+1)
+    return int(M[m][n])
 
 if __name__ == '__main__':
     t = time.time()
-    object = process('/Users/alan/Desktop/Reuters')
+    object = process('C:/Users/Night/Desktop/Reuters_test')
     # object.indextable.create_Permuterm_index()
     # object.indextable.find_regex_words('b*g*n')
-    object.indextable.compute_TFIDF('we are')
+    # object.indextable.index_compression()
+    # object.indextable.index_recovery()
+    print(object.indextable.compute_TFIDF('we are'))
     t = time.time() - t
     print(t)
 
