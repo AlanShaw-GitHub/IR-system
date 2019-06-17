@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import cmd
 import sys
 from InvertedIndexTable import process
@@ -20,7 +21,10 @@ class IRcmder(cmd.Cmd):
     def do_search_by_TFIDF(self, args):
 
         ret = self.object.indextable.compute_TFIDF(args)
-        print(ret)
+        for i in ret:
+            print(i)
+        # build Reuters
+        # search_by_TFIDF approximately
 
     #布尔查询
     def do_boolean_query(self, args):

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 from utils import readfiles
 from utils import vector_encode, vector_decode, boolean_op, vb_decode, vb_encode
@@ -5,6 +6,7 @@ import time
 import nltk
 from utils import sbst
 import math
+from collections import Counter
 import operator
 import numpy as np
 
@@ -14,9 +16,10 @@ punctuations = [',', '.', ':', ';', '?', '(', ')', '[', ']', '&', '!', '*', '@',
 
 class IndexTable:
 
-    def __init__(self):
+    def __init__(self, document_words):
         self.table = {}
-        self.permuterm_index_table = None
+        self.document_words = document_words
+        self.permuterm_index_table = False
         self.length = 0
         self.compress_doc_id = []
         self.compress_doc_fre = []
@@ -96,15 +99,21 @@ class IndexTable:
     def compute_TFIDF(self, sentence, engine='nltk'):
         if engine == 'nltk':
             sentence = nltk.word_tokenize(sentence)
-            sentence = [word for word in sentence if word not in punctuations]
+            # sentence = [word for word in sentence if word not in punctuations]
         scores = {}
-        for piece in sentence:
-            doc_list = self.table[piece]
+        sentence = Counter(sentence)
+        for piece in sentence.items():
+            doc_list = self.table[piece[0]]
+            weight = (1 + math.log10(piece[1])) * math.log10(self.length / doc_list[1])
             for doc in doc_list[0].items():
                 if scores.get(doc[0], 'null') != 'null':
-                    scores[doc[0]] += (1 + math.log10(doc[1])) * math.log10(self.length / doc_list[1])
+                    scores[doc[0]] += (1 + math.log10(doc[1])) * math.log10(self.length / doc_list[1]) * weight
                 else:
-                    scores[doc[0]] = (1 + math.log10(doc[1])) * math.log10(self.length / doc_list[1])
+                    scores[doc[0]] = (1 + math.log10(doc[1])) * math.log10(self.length / doc_list[1]) * weight
+        print(scores)
+        print(len(self.document_words[4841]),len(self.document_words[15024]),len(self.document_words[2474]))
+        for i in scores.items():
+            scores[i[0]] = scores[i[0]] / len(self.document_words[i[0]])
         scores = sorted(scores.items(), key=operator.itemgetter(1), reverse=True)
         return scores
 
@@ -269,7 +278,7 @@ def process(dir_name):
     objects = StaticObjects()
     objects.documents = readfiles(dir_name)
     objects.document_words = tokenize(objects.documents)
-    objects.indextable = IndexTable()
+    objects.indextable = IndexTable(objects.document_words)
 
     for words in objects.document_words.items():
         for word in words[1]:
@@ -284,8 +293,8 @@ def tokenize(documents, engine='nltk'):
     for _doc in documents.items():
         if engine == 'nltk':
             doc = nltk.word_tokenize(_doc[1])
-        doc_filtered = [word for word in doc if word not in punctuations]
-        document_words[_doc[0]] = doc_filtered
+        # doc_filtered = [word for word in doc if word not in punctuations]
+        document_words[_doc[0]] = doc
     return document_words
 
 #Levenshtein距离
