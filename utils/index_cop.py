@@ -1,5 +1,5 @@
 def vb_encode(docIDs):
-    bytestream = ''
+    bytestream=[]
     for num in docIDs:
         bytes_split = []
         one_bytestream=''
@@ -9,30 +9,38 @@ def vb_encode(docIDs):
                 break
             else:
                 num = int(num/128)
+        bytes_split = bytes_split[::-1]
         for i in range(len(bytes_split)):
-            for j in range(7):
-                one_bytestream += str(bytes_split[i] % 2)
-                bytes_split[i] = int(bytes_split[i] / 2)
-            if i == 0:
-                one_bytestream += '1'
+            if i == len(bytes_split) - 1:
+                bytestream.append(bytes([bytes_split[i]+128]))
             else:
-                one_bytestream += '0'
-        bytestream += one_bytestream[::-1]
+                bytestream.append(bytes([bytes_split[i]]))
     return bytestream
 
 
 def vb_decode(bytestream):
     docIDs = []
     num = 0
-    while len(bytestream) > 0:
-        one_byte = bytestream[0:8]
-        bytestream = bytestream[8:len(bytestream)]
-        for i in range(1, 8):
-            num *= 2
-            num += int(one_byte[i])
-        if one_byte[0] == '1':
+    for i in range(len(bytestream)):
+        if ord(bytestream[i]) > 127:
+            num *= 128
+            num += ord(bytestream[i]) - 128
             docIDs.append(num)
             num = 0
+        else:
+            num *= 128
+            num += ord(bytestream[i])
     return docIDs
 
+def print_vb_code(bytestream):
+    bytes_print = ''
+    for i in range(len(bytestream)):
+        num = ord(bytestream[i])
+        one_bytestream = ''
+        for j in range(8):
+            one_bytestream += str(num % 2)
+            num = int(num/2)
+        bytes_print += one_bytestream[::-1]
+        bytes_print += ' '
+    print(bytes_print)
 
