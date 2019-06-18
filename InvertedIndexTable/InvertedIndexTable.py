@@ -9,6 +9,10 @@ import math
 from collections import Counter
 import operator
 import numpy as np
+###第一次运行时需要nltk.download()wordnet相应组件
+#nltk.download()
+from nltk.corpus import wordnet
+
 
 punctuations = [',', '.', ':', ';', '?', '(', ')', '[', ']', '&', '!', '*', '@', '#',
                 '$', '%', '<', '>', "''", '``', "'", '{', '}']
@@ -273,66 +277,67 @@ class IndexTable:
                 print(self.table.compress_doc_id[i])
                 print_vb_code(self.table.compress_doc_id[i])
                 
-    #布尔检索(表达式长度最大为3)
-    def boolean_query(self, expression, doc_list):
-        ret = []
-        if len(expression) == 1:
-            if expression[0] not in ['AND', 'OR', 'NOT']:
-                IDlist = self.table.get(expression[0], [{},0])[0]
-                ret.extend(sorted(IDlist.keys()))
-            else:
-                print('Invalid boolean expression.')
-        elif len(expression) == 2 and expression[0] == 'NOT':
-            IDlist = self.table.get(expression[1], [{},0])[0]
-            for id in doc_list:
-                if id not in IDlist:
-                    ret.append(id)
-        elif len(expression) == 3:
-            IDlist1 = self.table.get(expression[0], [{},0])[0]
-            IDlist2 = self.table.get(expression[2], [{},0])[0]
-            if expression[1] == 'AND':
-                for id in doc_list:
-                    if (id in IDlist1) and (id in IDlist2):
-                        ret.append(id)
-            elif expression[1] == 'OR':
-                for id in doc_list:
-                    if (id in IDlist1) or (id in IDlist2):
-                        ret.append(id)
-            else:
-                return 'Invalid boolean expression./n'
+        #模糊查询
+    def fuzzy_query(self,args):
+        print('Begin fuzzy query.')
+        t = time.time()
+        _prefix = args[0]+'*'+args[len(args)-1]
+        prefix = _prefix + '$'
+        prefix = prefix[prefix.rindex('*')+1:] + prefix[:prefix.index('*')]
+        candidates = []
+        for i in self.permuterm_index_table.forward_from(prefix):
+            if not i[0].startswith(prefix): break
+            candidates.append(i)
+        prefix = _prefix.split('*')
+        candidates_filterd = []
+        for _candidate in candidates:
+            seed = False
+            candidate =_candidate[1]
+            for pre in prefix:
+                try:
+                    candidate = candidate[candidate.index(pre)+len(pre):]
+                except:
+                    seed = True
+                    break
+            if not seed:
+                candidates_filterd.append(_candidate[1])
+        candidates = []
+        for word in candidates_filterd:
+            if Levenshtein_Distance(args,word) <= 2:
+                candidates.append(word)
+        if len(candidates):
+            ret = []
+            IDlist = self.table.get(candidates[0], [{}, 0])[0]
+            ret.extend(sorted(IDlist.keys()))
+            print('Finished fuzzy query. Elasped time: ', time.time() - t, 's')
+            return candidates[0],ret
         else:
-            return 'Invalid boolean expression.'
-        return ret
+            candidates.append('No fuzzy mattching')
+            print('Finished fuzzy query. Elasped time: ', time.time() - t, 's')
+            return candidates[0],candidates[0]
 
-    # 布尔检索(表达式长度最大为3)
-    def boolean_query(self, words, doc_list):
-        priority = {'AND': 1, 'OR': 1, 'NOT': 2, '(': 0}
-        stack = []
-        op = []
-        ret = []
-        for i in range(0, len(words)):
-            if words[i] == 'AND' or words[i] == 'OR' or words[i] == 'NOT':
-                # print op
-                while (len(op) > 0) and priority[op[len(op) - 1]] >= priority[words[i]]:
-                    stack = self.boolean_op(op.pop(), stack)
-                op.append(words[i])
-            elif words[i] == '(':
-                op.append('(')
-            elif words[i] == ')':
-                while len(op) > 0 and op[len(op) - 1] != '(':
-                    stack = boolean_op(op.pop(), stack)
-                op.pop()
-            else:
-                vec = vector_encode(self.table.get(words[i], [{},0])[0], doc_list)
-                stack.append(vec)				
+    #同义词查询
+    def synonym_query(self,args):
+        synonyms = []
+        for syn in wordnet.synsets(args):
+            for lemma in syn.lemmas():
+                synonyms.append(lemma.name())
+        words = []
+        for word in synonyms:
+            if word in self.table:
+                words.append(word)
+        words = remove_duplicates(words)
+        sentence = words[0]+' '
+        for word in words:
+            if word != words[0]:
+                sentence = sentence + word+' '
+        print('The synosym words are: '+sentence)
+        print()
+        scores = self.compute_TFIDF(sentence)
+        print('Found ' + str(len(scores)) + ' documents that matched query')
+        for score in scores:
+            print('doc name:' + str(score[0]) + '.html score ' + str(score[1]))
 
-        while len(op) > 0:
-            stack = boolean_op(op.pop(), stack)
-        if len(stack) > 1:
-            return 'Invalid boolean expression.'
-        res = stack[0]
-        ret = vector_decode(res, doc_list)
-        return ret
 
     def correction(self, word):
         print('correcting...')
