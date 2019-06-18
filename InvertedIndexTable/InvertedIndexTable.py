@@ -189,35 +189,33 @@ class IndexTable:
             score = score / len(self.document_words[docID])
         return score
 
-    #布尔检索(表达式长度最大为3)
-    def boolean_query(self, expression, doc_list):
+    #布尔检索
+    def boolean_query(self, words, doc_list):
+        priority = {'AND': 1, 'OR': 1, 'NOT': 2, '(': 0}
+        stack = []
+        op = []
         ret = []
-        if len(expression) == 1:
-            if expression[0] not in ['AND', 'OR', 'NOT']:
-                IDlist = self.table.get(expression[0], [{},0])[0]
-                ret.extend(sorted(IDlist.keys()))
+        for i in range(0, len(words)):
+            if words[i] == 'AND' or words[i] == 'OR' or words[i] == 'NOT':
+                while (len(op) > 0) and priority[op[len(op) - 1]] >= priority[words[i]]:
+                    stack = boolean_op(op.pop(), stack)
+                op.append(words[i])
+            elif words[i] == '(':
+                op.append('(')
+            elif words[i] == ')':
+                while len(op) > 0 and op[len(op) - 1] != '(':
+                    stack = boolean_op(op.pop(), stack)
+                op.pop()
             else:
-                print('Invalid boolean expression.')
-        elif len(expression) == 2 and expression[0] == 'NOT':
-            IDlist = self.table.get(expression[1], [{},0])[0]
-            for id in doc_list:
-                if id not in IDlist:
-                    ret.append(id)
-        elif len(expression) == 3:
-            IDlist1 = self.table.get(expression[0], [{},0])[0]
-            IDlist2 = self.table.get(expression[2], [{},0])[0]
-            if expression[1] == 'AND':
-                for id in doc_list:
-                    if (id in IDlist1) and (id in IDlist2):
-                        ret.append(id)
-            elif expression[1] == 'OR':
-                for id in doc_list:
-                    if (id in IDlist1) or (id in IDlist2):
-                        ret.append(id)
-            else:
-                return 'Invalid boolean expression./n'
-        else:
+                vec = vector_encode(self.table.get(words[i], [{},0])[0], doc_list)
+                stack.append(vec)
+
+        while len(op) > 0:
+            stack = boolean_op(op.pop(), stack)
+        if len(stack) > 1:
             return 'Invalid boolean expression.'
+        res = stack[0]
+        ret = vector_decode(res, doc_list)
         return ret
 
     # 索引压缩(VB编码)
@@ -281,31 +279,16 @@ class IndexTable:
     def fuzzy_query(self,args):
         print('Begin fuzzy query.')
         t = time.time()
-        _prefix = args[0]+'*'+args[len(args)-1]
-        prefix = _prefix + '$'
-        prefix = prefix[prefix.rindex('*')+1:] + prefix[:prefix.index('*')]
         candidates = []
-        for i in self.permuterm_index_table.forward_from(prefix):
-            if not i[0].startswith(prefix): break
-            candidates.append(i)
-        prefix = _prefix.split('*')
-        candidates_filterd = []
-        for _candidate in candidates:
-            seed = False
-            candidate =_candidate[1]
-            for pre in prefix:
-                try:
-                    candidate = candidate[candidate.index(pre)+len(pre):]
-                except:
-                    seed = True
-                    break
-            if not seed:
-                candidates_filterd.append(_candidate[1])
-        candidates = []
-        for word in candidates_filterd:
-            if Levenshtein_Distance(args,word) <= 2:
-                candidates.append(word)
+        for key in self.table.keys():
+            if abs(len(args) - len(key)) < 3 and Levenshtein_Distance(args, key) < 3:
+                candidates.append(key)
         if len(candidates):
+            print('You may want to search: ')
+            for candidate in candidates:
+                print('[',end=' ')
+                print(candidate,end=' ')
+                print(']')
             ret = []
             IDlist = self.table.get(candidates[0], [{}, 0])[0]
             ret.extend(sorted(IDlist.keys()))
@@ -331,12 +314,17 @@ class IndexTable:
         for word in words:
             if word != words[0]:
                 sentence = sentence + word+' '
-        print('The synosym words are: '+sentence)
+        print('The synosym words are: ['+sentence+']')
         print()
         scores = self.compute_TFIDF(sentence)
         print('Found ' + str(len(scores)) + ' documents that matched query')
+        rank = 0
         for score in scores:
-            print('doc name:' + str(score[0]) + '.html score ' + str(score[1]))
+            if rank <30:
+                print('doc name:' + str(score[0]) + '.html score ' + str(score[1]))
+                rank = rank+1
+            else:
+                break
 
 
     def correction(self, word):
@@ -349,7 +337,6 @@ class IndexTable:
         if len(candidates):
             print('You may want to search:')
             print(' '.join(candidates))
-        print(time.time() - t)
 
     def phrase_query(self, args, engine='nltk'):
         if engine == 'nltk':
