@@ -28,6 +28,7 @@ class IRcmder(cmd.Cmd):
 
     def do_build(self, args):
         self.object = process(args)
+        self.object.indextable.index_compression()
 
     def do_create_Permuterm_index(self, args):
         self.object.indextable.create_Permuterm_index()
@@ -64,14 +65,10 @@ class IRcmder(cmd.Cmd):
                 self.object.indextable.correction(expression[0])
         else:
             print(ret)
-
-    #索引压缩
-    def do_index_compression(self, args):
-        self.object.indextable.index_compression()
-
-    #索引恢复
-    def do_index_recovery(self, args):
-        self.object.indextable.index_recovery()
+    
+    #索引打印
+    def do_index_print(self, args):
+        self.object.indextable.index_print(args)
 
     def do_quit(self, args):
         print('Goodbye.')
@@ -89,11 +86,9 @@ class IRcmder(cmd.Cmd):
     def help_boolean_query(self):
         print('Support operator:AND OR NOT.\nMaximum expression length: 3.')
 
-    def help_index_compression(self):
-        print('Compress index by VB encoder.\n')
-
-    def help_index_recovery(self):
-        print('Recover index by VB decoder.\n')
+    def help_index_print(self):
+        print('Print index in VB code.\n')
+        
 if __name__ == '__main__':
 
     print("Information Retrival System, version 1.0.0-release\n"
