@@ -221,28 +221,6 @@ class IndexTable:
 
     # 索引压缩(VB编码)
     def index_compression(self):
-        words = list(self.table)
-        docIDs = []
-        docFres = []
-        for word in words:
-            docIDs.append(list(self.table[word][0]))
-        for i in range(len(docIDs)):
-            temp = []
-            docIDs[i].sort()
-            for j in range(len(docIDs[i])):
-                temp.append(self.table[words[i]][0][docIDs[i][j]])
-            docFres.append(temp)
-        for i in range(len(docIDs)):    # 求间距
-            for j in range(1, len(docIDs[i])):
-                    docIDs[i][len(docIDs[i]) - j] = docIDs[i][len(docIDs[i]) - j] + docIDs[i][len(docIDs[i]) - j - 1]
-        for i in range(len(docIDs)):    # 编码
-            self.compress_doc_id.append(vb_encode(docIDs[i]))
-            self.compress_doc_fre.append(vb_encode(docFres[i]))
-        self.compress_word = words
-        self.table={}
-
-    # 索引压缩(VB编码)
-    def index_compression(self):
         words = list(self.tep_table)
         docIDs = []
         docFres = []
