@@ -18,9 +18,11 @@ class IndexTable:
 
     def __init__(self, document_words):
         self.table = {}
+        self.table_2 = {}
         self.document_words = document_words
         self.permuterm_index_table = False
         self.length = 0
+        self.length_2 = 0
         self.compress_doc_id = []
         self.compress_doc_fre = []
         self.compress_word = []
@@ -36,6 +38,17 @@ class IndexTable:
         else:
             self.table[word] = [{docID: 1}, 1]
             self.length += 1
+
+    def insert_pair_2(self, word, docID):
+        IDlist = self.table_2.get(word, 'null')
+        if IDlist != 'null':
+            if IDlist.get(docID, 'null') != 'null':
+                IDlist[docID] += 1
+            else:
+                IDlist[docID] = 1
+        else:
+            self.table_2[word] = {docID: 1}
+            self.length_2 += 1
 
     def get_docIDs(self, word):
         IDlist = self.table.get(word, 'null')
@@ -66,7 +79,6 @@ class IndexTable:
             word = item[0] + '$'
             for i in range(len(word)):
                 self.permuterm_index_table.add([word[i:] + word[:i],item[0]])
-        print(time.time() - t)
         print('Finished creating Permuterm index. Elasped time: ', time.time() - t, 's')
 
     def find_regex_words(self, _prefix):
@@ -110,12 +122,25 @@ class IndexTable:
                     scores[doc[0]] += (1 + math.log10(doc[1])) * math.log10(self.length / doc_list[1]) * weight
                 else:
                     scores[doc[0]] = (1 + math.log10(doc[1])) * math.log10(self.length / doc_list[1]) * weight
-        print(scores)
-        print(len(self.document_words[4841]),len(self.document_words[15024]),len(self.document_words[2474]))
         for i in scores.items():
             scores[i[0]] = scores[i[0]] / len(self.document_words[i[0]])
         scores = sorted(scores.items(), key=operator.itemgetter(1), reverse=True)
         return scores
+
+    def compute_TFIDF_with_docID(self, sentence, docID, engine='nltk'):
+        if engine == 'nltk':
+            sentence = nltk.word_tokenize(sentence)
+            # sentence = [word for word in sentence if word not in punctuations]
+        score = 0
+        sentence = Counter(sentence)
+        for piece in sentence.items():
+            doc_list = self.table[piece[0]]
+            weight = (1 + math.log10(piece[1])) * math.log10(self.length / doc_list[1])
+            ret = doc_list[0].get(docID, 'none')
+            if ret != 'none':
+                score += (1 + math.log10(ret)) * math.log10(self.length / doc_list[1]) * weight
+            score = score / len(self.document_words[docID])
+        return score
 
     #布尔检索(表达式长度最大为3)
     def boolean_query(self, expression, doc_list):
@@ -264,6 +289,18 @@ class IndexTable:
             print('You may want to search:')
             print(' '.join(candidates))
 
+    def phrase_query(self, args, engine='nltk'):
+        if engine == 'nltk':
+            sentence = nltk.word_tokenize(args)
+        docs = []
+        for i in range(len(sentence)-1):
+            ret = self.table_2.get(sentence[i]+' '+sentence[i+1], 'none')
+            if ret == 'none': return []
+            docs.append(set(ret.keys()))
+        docs = set.intersection(*docs)
+        return docs
+
+
 class StaticObjects:
 
     def __init__(self):
@@ -283,6 +320,8 @@ def process(dir_name):
     for words in objects.document_words.items():
         for word in words[1]:
             objects.indextable.insert_pair(word, words[0])
+        for i in range(len(words[1]) - 1):
+            objects.indextable.insert_pair_2(words[1][i] + ' ' + words[1][i+1], words[0])
     # print(objects.indextable.table)
     print('Finished loading and build index. Elasped time: ', time.time() - t, 's')
     return objects

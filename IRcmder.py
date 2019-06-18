@@ -2,9 +2,29 @@
 import cmd
 import sys
 from InvertedIndexTable import process
+import operator
 
 class IRcmder(cmd.Cmd):
     intro = 'Welcome to the Information Retrival System.\nType help or ? to list commands.\n'
+
+    def __init__(self):
+        super(IRcmder, self).__init__()
+        self.k = 10
+
+    def do_change_k(self, args):
+        self.k = int(args)
+
+    def do_phrase_query(self, args):
+        ret = self.object.indextable.phrase_query(args)
+        scores = {}
+        for i in ret:
+            scores[i] = self.object.indextable.compute_TFIDF_with_docID(args, i)
+        scores = sorted(scores.items(), key=operator.itemgetter(1), reverse=True)
+        for index, i in enumerate(scores):
+            if index > self.k: break
+            print(i)
+        # build ../Reuters
+        # phrase_query information technology
 
     def do_build(self, args):
         self.object = process(args)
@@ -16,15 +36,22 @@ class IRcmder(cmd.Cmd):
         if not self.object.indextable.permuterm_index_table:
             self.object.indextable.create_Permuterm_index()
         ret = self.object.indextable.find_regex_words(args)
-        print(ret)
+        print('searched words: ', ret)
+        ret = self.object.indextable.compute_TFIDF(' '.join(ret))
+        print('Top-%d rankings:' % self.k)
+        for index, i in enumerate(ret):
+            if index > self.k: break
+            print(i)
 
     def do_search_by_TFIDF(self, args):
-
         ret = self.object.indextable.compute_TFIDF(args)
-        for i in ret:
+        print('Top-%d rankings:' % self.k)
+        for index, i in enumerate(ret):
+            if index > self.k: break
             print(i)
         # build Reuters
         # search_by_TFIDF approximately
+
 
     #布尔查询
     def do_boolean_query(self, args):
