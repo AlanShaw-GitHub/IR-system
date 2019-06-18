@@ -356,7 +356,7 @@ class IndexTable:
         for i in range(len(sentence)-1):
             ret = self.table_2.get(sentence[i]+' '+sentence[i+1], 'none')
             if ret == 'none': return []
-            docs.append(set(ret.keys()))
+            docs.append(set(ret[0].keys()))
         docs = set.intersection(*docs)
         docs_filterd = []
         for doc in docs:
