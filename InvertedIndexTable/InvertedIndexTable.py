@@ -285,10 +285,15 @@ class IndexTable:
                 candidates.append(key)
         if len(candidates):
             print('You may want to search: ')
+            rank = 0
+            print('[', end=' ')
             for candidate in candidates:
-                print('[',end=' ')
-                print(candidate,end=' ')
-                print(']')
+                if rank<10:
+                    print(candidate,end=' ')
+                    rank = rank+1
+                else:
+                    break
+            print(']')
             ret = []
             IDlist = self.table.get(candidates[0], [{}, 0])[0]
             ret.extend(sorted(IDlist.keys()))
