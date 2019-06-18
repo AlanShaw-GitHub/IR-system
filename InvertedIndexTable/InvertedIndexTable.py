@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from utils import readfiles
-from utils import vector_encode, vector_decode, boolean_op, vb_decode, vb_encode
+from utils import vector_encode, vector_decode, boolean_op, vb_decode, vb_encode, print_vb_code
 import time
 import nltk
 from utils import sbst
@@ -13,12 +13,58 @@ import numpy as np
 punctuations = [',', '.', ':', ';', '?', '(', ')', '[', ']', '&', '!', '*', '@', '#',
                 '$', '%', '<', '>', "''", '``', "'", '{', '}']
 
+class CompressTable:
+
+    def __init__(self, compress_doc_id, compress_doc_fre, compress_word):
+        self.compress_doc_id = compress_doc_id
+        self.compress_doc_fre = compress_doc_fre
+        self.compress_word = compress_word
+
+    def keys(self):
+        return self.compress_word
+
+    def get(self, word, default=None):
+        for i in range(len(self.compress_word)):
+            if self.compress_word[i] == word:
+                # 解码
+                docIDs = vb_decode(self.compress_doc_id[i])
+                docFres = vb_decode(self.compress_doc_fre[i])
+                # 求ID
+                for j in range(1, len(docIDs)):
+                    docIDs[j] = docIDs[j] - docIDs[j - 1]
+                tep_list = []
+                dic = {}
+                for j in range(len(docIDs)):
+                    dic[docIDs[j]] = docFres[j]
+                tep_list.append(dic)
+                tep_list.append(len(dic))
+                return tep_list
+        return default
+
+    def __getitem__(self, word, default=None):
+        for i in range(len(self.compress_word)):
+            if self.compress_word[i] == word:
+                # 解码
+                docIDs = vb_decode(self.compress_doc_id[i])
+                docFres = vb_decode(self.compress_doc_fre[i])
+                # 求ID
+                for j in range(1, len(docIDs)):
+                    docIDs[j] = docIDs[j] - docIDs[j - 1]
+                tep_list = []
+                dic = {}
+                for j in range(len(docIDs)):
+                    dic[docIDs[j]] = docFres[j]
+                tep_list.append(dic)
+                tep_list.append(len(dic))
+                return tep_list
 
 class IndexTable:
 
     def __init__(self, document_words):
-        self.table = {}
-        self.table_2 = {}
+        self.tep_table = {}
+        self.table = None
+        self.tep_table_2 = {}
+        self.table_2 = None
         self.document_words = document_words
         self.permuterm_index_table = False
         self.length = 0
@@ -28,7 +74,7 @@ class IndexTable:
         self.compress_word = []
 
     def insert_pair(self, word, docID):
-        IDlist = self.table.get(word, 'null')
+        IDlist = self.tep_table.get(word, 'null')
         if IDlist != 'null':
             if IDlist[0].get(docID, 'null') != 'null':
                 IDlist[0][docID] += 1
@@ -36,18 +82,18 @@ class IndexTable:
                 IDlist[0][docID] = 1
                 IDlist[1] += 1
         else:
-            self.table[word] = [{docID: 1}, 1]
+            self.tep_table[word] = [{docID: 1}, 1]
             self.length += 1
 
     def insert_pair_2(self, word, docID):
-        IDlist = self.table_2.get(word, 'null')
+        IDlist = self.tep_table_2.get(word, 'null')
         if IDlist != 'null':
             if IDlist.get(docID, 'null') != 'null':
                 IDlist[docID] += 1
             else:
                 IDlist[docID] = 1
         else:
-            self.table_2[word] = {docID: 1}
+            self.tep_table_2[word] = {docID: 1}
             self.length_2 += 1
 
     def get_docIDs(self, word):
@@ -75,10 +121,10 @@ class IndexTable:
         print('Begin creating Permuterm index.')
         t = time.time()
         self.permuterm_index_table = sbst()
-        for item in self.table.items():
-            word = item[0] + '$'
+        for item in self.table.keys():
+            word = item + '$'
             for i in range(len(word)):
-                self.permuterm_index_table.add([word[i:] + word[:i],item[0]])
+                self.permuterm_index_table.add([word[i:] + word[:i],item])
         print('Finished creating Permuterm index. Elasped time: ', time.time() - t, 's')
 
     def find_regex_words(self, _prefix):
@@ -195,29 +241,56 @@ class IndexTable:
         self.compress_word = words
         self.table={}
 
-    # 索引恢复
-    def index_recovery(self):
+    # 索引压缩(VB编码)
+    def index_compression(self):
+        words = list(self.tep_table)
         docIDs = []
         docFres = []
-        test={}
-        for i in range(len(self.compress_word)): # 解码
-            docIDs.append(vb_decode(self.compress_doc_id[i]))
-            docFres.append(vb_decode(self.compress_doc_fre[i]))
-        for i in range(len(docIDs)):    # 求ID
-            for j in range(1, len(docIDs[i])):
-                    docIDs[i][j] = docIDs[i][j] - docIDs[i][j - 1]
+        compress_word = []
+        compress_doc_id = []
+        compress_doc_fre = []
+        for word in words:
+            docIDs.append(list(self.tep_table[word][0]))
         for i in range(len(docIDs)):
-            tep_list = []
-            dic = {}
+            temp = []
+            docIDs[i].sort()
             for j in range(len(docIDs[i])):
-                dic[docIDs[i][j]] = docFres[i][j]
-            tep_list.append(dic)
-            tep_list.append(len(dic))
-            self.table[self.compress_word[i]] = tep_list
-        self.compress_word = []
-        self.compress_doc_id = []
-        self.compress_doc_fre = []
-
+                temp.append(self.tep_table[words[i]][0][docIDs[i][j]])
+            docFres.append(temp)
+        for i in range(len(docIDs)):    # 求间距
+            for j in range(1, len(docIDs[i])):
+                    docIDs[i][len(docIDs[i]) - j] = docIDs[i][len(docIDs[i]) - j] + docIDs[i][len(docIDs[i]) - j - 1]
+        for i in range(len(docIDs)):    # 编码
+            compress_doc_id.append(vb_encode(docIDs[i]))
+            compress_doc_fre.append(vb_encode(docFres[i]))
+        compress_word = words
+        self.tep_table = {}
+        self.table = CompressTable(compress_doc_id, compress_doc_fre, compress_word)
+        #如果有table_2
+        words = list(self.tep_table_2)
+        docIDs = []
+        docFres = []
+        compress_word = []
+        compress_doc_id = []
+        compress_doc_fre = []
+        for word in words:
+            docIDs.append(list(self.tep_table[word][0]))
+        for i in range(len(docIDs)):
+            temp = []
+            docIDs[i].sort()
+            for j in range(len(docIDs[i])):
+                temp.append(self.tep_table[words[i]][0][docIDs[i][j]])
+            docFres.append(temp)
+        for i in range(len(docIDs)):    # 求间距
+            for j in range(1, len(docIDs[i])):
+                    docIDs[i][len(docIDs[i]) - j] = docIDs[i][len(docIDs[i]) - j] + docIDs[i][len(docIDs[i]) - j - 1]
+        for i in range(len(docIDs)):    # 编码
+            compress_doc_id.append(vb_encode(docIDs[i]))
+            compress_doc_fre.append(vb_encode(docFres[i]))
+        compress_word = words
+        self.tep_table = {}
+        self.table = CompressTable(compress_doc_id, compress_doc_fre, compress_word)
+        
     #布尔检索(表达式长度最大为3)
     def boolean_query(self, expression, doc_list):
         ret = []
