@@ -69,9 +69,6 @@ class IndexTable:
         self.permuterm_index_table = False
         self.length = 0
         self.length_2 = 0
-        self.compress_doc_id = []
-        self.compress_doc_fre = []
-        self.compress_word = []
 
     def insert_pair(self, word, docID):
         IDlist = self.tep_table.get(word, 'null')
@@ -252,12 +249,12 @@ class IndexTable:
         compress_doc_id = []
         compress_doc_fre = []
         for word in words:
-            docIDs.append(list(self.tep_table[word]))
+            docIDs.append(list(self.tep_table_2[word]))
         for i in range(len(docIDs)):
             temp = []
             docIDs[i].sort()
             for j in range(len(docIDs[i])):
-                temp.append(self.tep_table[words[i]][docIDs[i][j]])
+                temp.append(self.tep_table_2[words[i]][docIDs[i][j]])
             docFres.append(temp)
         for i in range(len(docIDs)):    # 求间距
             for j in range(1, len(docIDs[i])):
@@ -266,8 +263,8 @@ class IndexTable:
             compress_doc_id.append(vb_encode(docIDs[i]))
             compress_doc_fre.append(vb_encode(docFres[i]))
         compress_word = words
-        self.tep_table = {}
-        self.table = CompressTable(compress_doc_id, compress_doc_fre, compress_word)
+        self.tep_table_2= {}
+        self.table_2 = CompressTable(compress_doc_id, compress_doc_fre, compress_word)
     
     #索引打印
     def index_print(self, word):
