@@ -281,13 +281,15 @@ class IndexTable:
 
     def correction(self, word):
         print('correcting...')
+        t = time.time()
         candidates = []
         for key in self.table.keys():
-            if Levenshtein_Distance(word, key) <= 2:
+            if abs(len(word)-len(key)) < 3 and Levenshtein_Distance(word, key) < 3:
                 candidates.append(key)
         if len(candidates):
             print('You may want to search:')
             print(' '.join(candidates))
+        print(time.time() - t)
 
     def phrase_query(self, args, engine='nltk'):
         if engine == 'nltk':
