@@ -350,21 +350,26 @@ def tokenize(documents, engine='nltk'):
         document_words[_doc[0]] = doc
     return document_words
 
-#Levenshtein距离
 def Levenshtein_Distance(str1,str2):
     m = len(str1)
     n = len(str2)
     M = np.zeros((m+1, n+1))
+    flag = 0
     for i in range(m+1):
         M[i][0] = i
     for j in range(n+1):
         M[0][j] = j
     for i in range(1, m+1):
+        flag = 1
         for j in range(1, n+1):
             if str1[i-1] == str2[j-1]:
                 M[i][j] = min(M[i-1][j]+1, M[i][j-1]+1, M[i-1][j-1])
             else:
                 M[i][j] = min(M[i-1][j]+1, M[i][j-1]+1, M[i-1][j-1]+1)
+            if M[i][j] < 3:
+                flag = 0
+        if flag == 1:
+            return 10
     return int(M[m][n])
 
 if __name__ == '__main__':
