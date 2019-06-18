@@ -298,7 +298,19 @@ class IndexTable:
             if ret == 'none': return []
             docs.append(set(ret.keys()))
         docs = set.intersection(*docs)
-        return docs
+        docs_filterd = []
+        for doc in docs:
+            for i in range(len(self.document_words[doc])):
+                seed = False
+                if i == sentence[0]:
+                    for index, token in enumerate(sentence):
+                        if token != self.document_words[doc][i + index]:
+                            seed = True
+                            break
+                if seed == False:
+                    docs_filterd.append(doc)
+
+        return docs_filterd
 
 
 class StaticObjects:
