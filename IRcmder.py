@@ -65,7 +65,22 @@ class IRcmder(cmd.Cmd):
                 self.object.indextable.correction(expression[0])
         else:
             print(ret)
-    
+    #模糊查询
+    def do_fuzzy_query(self,args):
+        if not self.object.indextable.permuterm_index_table:
+            self.object.indextable.create_Permuterm_index()
+        candidate,ret = self.object.indextable.fuzzy_query(args)
+        if candidate == ret:
+            print(candidate)
+        else:
+            scores = self.object.indextable.compute_TFIDF(candidate)
+            print('Found '+str(len(scores))+' documents that matched query')
+            for score in scores:
+                print('doc name:'+str(score[0])+'.html score '+str(score[1]))
+    #同义词查询
+    def do_synonym_query(self,args):
+        self.object.indextable.synonym_query(args)
+        
     #索引打印
     def do_index_print(self, args):
         self.object.indextable.index_print(args)
@@ -85,6 +100,15 @@ class IRcmder(cmd.Cmd):
 
     def help_boolean_query(self):
         print('Support operator:AND OR NOT.\nMaximum expression length: 3.')
+
+    def help_fuzzy_query(self):
+        print('Support fuzzy query of one word')
+        print('You can input like this: fuzzy_query approxmtely')
+
+    def help_synonym_query(self):
+        print('Support synonym query of one word')
+        print('You can input like this: synonym_query absolutely')
+
 
     def help_index_print(self):
         print('Print index in VB code.\n')
