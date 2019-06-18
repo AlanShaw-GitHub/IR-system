@@ -324,7 +324,7 @@ class IndexTable:
                 synonyms.append(lemma.name())
         words = []
         for word in synonyms:
-            if word in self.table:
+            if word in self.table.compress_word:
                 words.append(word)
         words = remove_duplicates(words)
         sentence = words[0]+' '
@@ -432,6 +432,11 @@ def Levenshtein_Distance(str1,str2):
             return 10
     return int(M[m][n])
 
+def remove_duplicates(thy_list):
+    my_set = set(thy_list)  # 将列表转换成集合
+    my_list = list(my_set)  # 列表去重
+    return my_list
+  
 if __name__ == '__main__':
     t = time.time()
     object = process('C:/Users/Night/Desktop/Reuters_test')
