@@ -268,7 +268,14 @@ class IndexTable:
         compress_word = words
         self.tep_table = {}
         self.table = CompressTable(compress_doc_id, compress_doc_fre, compress_word)
-        
+    
+    #索引打印
+    def index_print(self, word):
+        for i in range(len(self.table.compress_word)):
+            if self.table.compress_word[i] == word:
+                print(self.table.compress_doc_id[i])
+                print_vb_code(self.table.compress_doc_id[i])
+                
     #布尔检索(表达式长度最大为3)
     def boolean_query(self, expression, doc_list):
         ret = []
