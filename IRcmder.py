@@ -89,12 +89,14 @@ class IRcmder(cmd.Cmd):
     #模糊查询
     def do_fuzzy_query(self,args):
         try:
-            if not self.object.indextable.permuterm_index_table:
-                self.object.indextable.create_Permuterm_index()
+#             if not self.object.indextable.permuterm_index_table:
+#                 self.object.indextable.create_Permuterm_index()
             candidate,ret = self.object.indextable.fuzzy_query(args)
             if candidate == ret:
                 print(candidate)
             else:
+                scores = self.object.indextable.compute_TFIDF(candidate)
+                print('Found '+str(len(scores))+' documents that matched query')
                 rank = 0
                 for score in scores:
                     if rank <=20:
