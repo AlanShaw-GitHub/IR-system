@@ -12,82 +12,119 @@ class IRcmder(cmd.Cmd):
         self.k = 10
 
     def do_change_k(self, args):
-        self.k = int(args)
-
+        try:
+            self.k = int(args)
+        except Exception as e:
+            print(e)
+        
     def do_phrase_query(self, args):
-        ret = self.object.indextable.phrase_query(args)
-        scores = {}
-        for i in ret:
-            scores[i] = self.object.indextable.compute_TFIDF_with_docID(args, i)
-        scores = sorted(scores.items(), key=operator.itemgetter(1), reverse=True)
-        for index, i in enumerate(scores):
-            if index > self.k: break
-            print(i)
-        # build ../Reuters
-        # phrase_query information technology
+        try:
+            ret = self.object.indextable.phrase_query(args)
+            scores = {}
+            for i in ret:
+                scores[i] = self.object.indextable.compute_TFIDF_with_docID(args, i)
+            scores = sorted(scores.items(), key=operator.itemgetter(1), reverse=True)
+            for index, i in enumerate(scores):
+                if index > self.k: break
+                print(i)
+            # build ../Reuters
+            # phrase_query information technology
+        except Exception as e:
+            print(e)
 
     def do_build(self, args):
-        self.object = process(args)
-        self.object.indextable.index_compression()
+        try:
+            self.object = process(args)
+            self.object.indextable.index_compression()
+        except Exception as e:
+            print(e)
 
     def do_create_Permuterm_index(self, args):
-        self.object.indextable.create_Permuterm_index()
+        try:
+            self.object.indextable.create_Permuterm_index()
+        except Exception as e:
+            print(e)
 
     def do_wildcard_query(self, args):
-        if not self.object.indextable.permuterm_index_table:
-            self.object.indextable.create_Permuterm_index()
-        ret = self.object.indextable.find_regex_words(args)
-        print('searched words: ', ret)
-        ret = self.object.indextable.compute_TFIDF(' '.join(ret))
-        print('Top-%d rankings:' % self.k)
-        for index, i in enumerate(ret):
-            if index > self.k: break
-            print(i)
-
+        try:
+            if not self.object.indextable.permuterm_index_table:
+                self.object.indextable.create_Permuterm_index()
+            ret = self.object.indextable.find_regex_words(args)
+            print('searched words: ', ret)
+            ret = self.object.indextable.compute_TFIDF(' '.join(ret))
+            print('Top-%d rankings:' % self.k)
+            for index, i in enumerate(ret):
+                if index > self.k: break
+                print(i)
+        except Exception as e:
+            print(e)
+            
     def do_search_by_TFIDF(self, args):
-        ret = self.object.indextable.compute_TFIDF(args)
-        print('Top-%d rankings:' % self.k)
-        for index, i in enumerate(ret):
-            if index > self.k: break
-            print(i)
-        # build Reuters
-        # search_by_TFIDF approximately
-
+        try:
+            ret = self.object.indextable.compute_TFIDF(args)
+            print('Top-%d rankings:' % self.k)
+            for index, i in enumerate(ret):
+                if index > self.k: break
+                print(i)
+            # build Reuters
+            # search_by_TFIDF approximately
+        except Exception as e:
+            print(e)
 
     #布尔查询
     def do_boolean_query(self, args):
-        expression = args.replace('(',' ( ').replace(')',' ) ').split()
-        doc_list = sorted(self.object.documents.keys())
-        ret = self.object.indextable.boolean_query(expression, doc_list)
-        if ret == []:
-            print('Not found.')
-            if len(expression) == 1:
-                self.object.indextable.correction(expression[0])
-        else:
-            print(ret)
+        try:
+            expression = args.replace('(',' ( ').replace(')',' ) ').split()
+            doc_list = sorted(self.object.documents.keys())
+            ret = self.object.indextable.boolean_query(expression, doc_list)
+            if ret == []:
+                print('Not found.')
+                if len(expression) == 1:
+                    self.object.indextable.correction(expression[0])
+            else:
+                print(ret)
+        except Exception as e:
+            print(e)                
+                
     #模糊查询
     def do_fuzzy_query(self,args):
-        if not self.object.indextable.permuterm_index_table:
-            self.object.indextable.create_Permuterm_index()
-        candidate,ret = self.object.indextable.fuzzy_query(args)
-        if candidate == ret:
-            print(candidate)
-        else:
-            scores = self.object.indextable.compute_TFIDF(candidate)
-            print('Found '+str(len(scores))+' documents that matched query')
-            for score in scores:
-                print('doc name:'+str(score[0])+'.html score '+str(score[1]))
+        try:
+            if not self.object.indextable.permuterm_index_table:
+                self.object.indextable.create_Permuterm_index()
+            candidate,ret = self.object.indextable.fuzzy_query(args)
+            if candidate == ret:
+                print(candidate)
+            else:
+                rank = 0
+                for score in scores:
+                    if rank <=20:
+                        print('doc name:'+str(score[0])+'.html score '+str(score[1]))
+                        rank = rank+1
+                    else:
+                        break
+        except Exception as e:
+            print(e)                    
+                    
     #同义词查询
     def do_synonym_query(self,args):
-        self.object.indextable.synonym_query(args)
+        try:
+            self.object.indextable.synonym_query(args)
+        except Exception as e:
+            print(e)            
         
     #索引打印
     def do_index_print(self, args):
-        self.object.indextable.index_print(args)
+        try:
+            self.object.indextable.index_print(args)
+        except Exception as e:
+            print(e)            
 
     def do_quit(self, args):
-        print('Goodbye.')
-        sys.exit()
+        try:
+            print('Goodbye.')
+            sys.exit()
+        except Exception as e:
+            print(e)            
 
     def emptyline(self):
         pass
