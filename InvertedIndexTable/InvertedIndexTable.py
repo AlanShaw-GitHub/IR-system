@@ -252,12 +252,12 @@ class IndexTable:
         compress_doc_id = []
         compress_doc_fre = []
         for word in words:
-            docIDs.append(list(self.tep_table[word][0]))
+            docIDs.append(list(self.tep_table[word]))
         for i in range(len(docIDs)):
             temp = []
             docIDs[i].sort()
             for j in range(len(docIDs[i])):
-                temp.append(self.tep_table[words[i]][0][docIDs[i][j]])
+                temp.append(self.tep_table[words[i]][docIDs[i][j]])
             docFres.append(temp)
         for i in range(len(docIDs)):    # 求间距
             for j in range(1, len(docIDs[i])):
