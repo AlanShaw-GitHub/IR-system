@@ -24,6 +24,7 @@ class IRcmder(cmd.Cmd):
             for i in ret:
                 scores[i] = self.object.indextable.compute_TFIDF_with_docID(args, i)
             scores = sorted(scores.items(), key=operator.itemgetter(1), reverse=True)
+            print('Total docs:', len(scores))
             for index, i in enumerate(scores):
                 if index > self.k: break
                 print(i)
@@ -36,6 +37,7 @@ class IRcmder(cmd.Cmd):
         try:
             self.object = process(args)
             self.object.indextable.index_compression()
+            self.object.indextable.create_Permuterm_index()
         except Exception as e:
             print(e)
 
@@ -52,6 +54,7 @@ class IRcmder(cmd.Cmd):
             ret = self.object.indextable.find_regex_words(args)
             print('searched words: ', ret)
             ret = self.object.indextable.compute_TFIDF(' '.join(ret))
+            print('Total docs:', len(ret))
             print('Top-%d rankings:' % self.k)
             for index, i in enumerate(ret):
                 if index > self.k: break
