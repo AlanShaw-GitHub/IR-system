@@ -85,9 +85,11 @@ class IRcmder(cmd.Cmd):
                 if len(expression) == 1:
                     self.object.indextable.correction(expression[0])
             else:
+                if ret != 'Invalid boolean expression.':
+                    print('Found %d document(s)'%len(ret))
                 print(ret)
         except Exception as e:
-            print(e)                
+            print(e)              
                 
     #模糊查询
     def do_fuzzy_query(self,args):
