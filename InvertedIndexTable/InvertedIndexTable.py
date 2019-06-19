@@ -316,9 +316,11 @@ class IndexTable:
                 words.append(word)
         words = remove_duplicates(words)
         sentence = words[0]+' '
+        rank = 0
         for word in words:
-            if word != words[0]:
+            if word != words[0] and rank<=4:
                 sentence = sentence + word+' '
+                rank = rank+1
         print('The synosym words are: ['+sentence+']')
         print()
         scores = self.compute_TFIDF(sentence)
